@@ -138,6 +138,15 @@
     return choices.array;
 }
 
+- (BOOL)prefersEnglish {
+    NSString *language = [NSLocale preferredLanguages].firstObject.lowercaseString ?: @"";
+    return [language hasPrefix:@"en"];
+}
+
+- (NSString *)localizedChinese:(NSString *)chinese english:(NSString *)english {
+    return [self prefersEnglish] ? english : chinese;
+}
+
 - (void)buildMainMenu {
     NSMenu *menuBar = [[NSMenu alloc] init];
     NSMenuItem *appMenuItem = [[NSMenuItem alloc] init];
@@ -147,7 +156,8 @@
     NSMenu *appMenu = [[NSMenu alloc] init];
     NSString *appName = NSProcessInfo.processInfo.processName ?: @"AI Code Launcher";
 
-    NSMenuItem *quitItem = [[NSMenuItem alloc] initWithTitle:[NSString stringWithFormat:@"退出 %@", appName]
+    NSString *quitTitle = [self prefersEnglish] ? [NSString stringWithFormat:@"Quit %@", appName] : [NSString stringWithFormat:@"退出 %@", appName];
+    NSMenuItem *quitItem = [[NSMenuItem alloc] initWithTitle:quitTitle
                                                       action:@selector(terminate:)
                                                keyEquivalent:@"q"];
     [appMenu addItem:quitItem];
@@ -392,16 +402,16 @@
                                      borderColor:[NSColor colorWithSRGBRed:0.25 green:0.31 blue:0.38 alpha:1.0]
                                     cornerRadius:22.0];
 
-    NSTextField *badgeLabel = [self labelWithFrame:NSMakeRect(18, 62, 110, 18) text:@"Launchpad" font:[NSFont systemFontOfSize:11 weight:NSFontWeightSemibold]];
+    NSTextField *badgeLabel = [self labelWithFrame:NSMakeRect(18, 62, 110, 18) text:[self localizedChinese:@"启动台" english:@"Launchpad"] font:[NSFont systemFontOfSize:11 weight:NSFontWeightSemibold]];
     badgeLabel.textColor = [[self accentColor] blendedColorWithFraction:0.15 ofColor:NSColor.whiteColor];
 
     NSTextField *titleLabel = [self labelWithFrame:NSMakeRect(18, 28, 320, 30) text:@"AI Code Launcher" font:[NSFont systemFontOfSize:28 weight:NSFontWeightHeavy]];
     titleLabel.textColor = NSColor.whiteColor;
 
-    NSTextField *subtitleLabel = [self labelWithFrame:NSMakeRect(18, 10, 360, 18) text:@"找目录、切目录、选命令，直接开工。" font:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]];
+    NSTextField *subtitleLabel = [self labelWithFrame:NSMakeRect(18, 10, 360, 18) text:[self localizedChinese:@"找目录、切目录、选命令，直接开工。" english:@"Pick a project, choose a command, and start."] font:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]];
     subtitleLabel.textColor = [NSColor colorWithSRGBRed:0.79 green:0.84 blue:0.90 alpha:1.0];
 
-    NSTextField *heroHint = [self labelWithFrame:NSMakeRect(360, 28, 158, 40) text:@"Projects\nCommand\nLaunch" font:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightSemibold]];
+    NSTextField *heroHint = [self labelWithFrame:NSMakeRect(360, 28, 158, 40) text:[self localizedChinese:@"项目\n命令\n启动" english:@"Projects\nCommand\nLaunch"] font:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightSemibold]];
     heroHint.textColor = [NSColor colorWithSRGBRed:0.98 green:0.72 blue:0.54 alpha:0.95];
     heroHint.alignment = NSTextAlignmentRight;
 
@@ -409,9 +419,9 @@
                                    backgroundColor:[self panelFillColor]
                                         borderColor:[self panelBorderColor]
                                        cornerRadius:22.0];
-    NSTextField *projectLabel = [self labelWithFrame:NSMakeRect(18, 126, 120, 20) text:@"项目目录" font:[NSFont systemFontOfSize:13 weight:NSFontWeightBold]];
+    NSTextField *projectLabel = [self labelWithFrame:NSMakeRect(18, 126, 120, 20) text:[self localizedChinese:@"项目目录" english:@"Project"] font:[NSFont systemFontOfSize:13 weight:NSFontWeightBold]];
     projectLabel.textColor = [NSColor colorWithSRGBRed:0.17 green:0.21 blue:0.27 alpha:1.0];
-    NSTextField *projectHint = [self labelWithFrame:NSMakeRect(98, 126, 260, 18) text:@"收藏、移除、Finder 跳转都集中在这里。" font:[NSFont systemFontOfSize:12]];
+    NSTextField *projectHint = [self labelWithFrame:NSMakeRect(98, 126, 320, 18) text:[self localizedChinese:@"收藏、移除、Finder 跳转都集中在这里。" english:@"Pin, remove, and reveal the current project here."] font:[NSFont systemFontOfSize:12]];
     projectHint.textColor = NSColor.secondaryLabelColor;
 
     self.projectPopup = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(18, 88, 506, 34) pullsDown:NO];
@@ -420,10 +430,10 @@
     self.projectPopup.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
     [self styleInputControl:self.projectPopup];
 
-    NSButton *chooseButton = [self buttonWithFrame:NSMakeRect(18, 46, 242, 30) title:@"选择文件夹..." action:@selector(chooseFolder:)];
-    self.revealButton = [self buttonWithFrame:NSMakeRect(282, 46, 242, 30) title:@"在 Finder 中显示" action:@selector(revealInFinder:)];
-    self.pinButton = [self buttonWithFrame:NSMakeRect(18, 12, 242, 30) title:@"收藏当前项目" action:@selector(togglePin:)];
-    self.removeButton = [self buttonWithFrame:NSMakeRect(282, 12, 242, 30) title:@"移除当前项目" action:@selector(removeSelectedProject:)];
+    NSButton *chooseButton = [self buttonWithFrame:NSMakeRect(18, 46, 242, 30) title:[self localizedChinese:@"选择文件夹..." english:@"Choose Folder..."] action:@selector(chooseFolder:)];
+    self.revealButton = [self buttonWithFrame:NSMakeRect(282, 46, 242, 30) title:[self localizedChinese:@"在 Finder 中显示" english:@"Reveal in Finder"] action:@selector(revealInFinder:)];
+    self.pinButton = [self buttonWithFrame:NSMakeRect(18, 12, 242, 30) title:[self localizedChinese:@"收藏当前项目" english:@"Pin Current Project"] action:@selector(togglePin:)];
+    self.removeButton = [self buttonWithFrame:NSMakeRect(282, 12, 242, 30) title:[self localizedChinese:@"移除当前项目" english:@"Remove Current Project"] action:@selector(removeSelectedProject:)];
     [self styleSecondaryButton:chooseButton];
     [self styleSecondaryButton:self.revealButton];
     [self styleSecondaryButton:self.pinButton];
@@ -433,9 +443,9 @@
                                    backgroundColor:[self panelFillColor]
                                         borderColor:[self panelBorderColor]
                                        cornerRadius:22.0];
-    NSTextField *commandsLabel = [self labelWithFrame:NSMakeRect(18, 58, 180, 20) text:@"启动命令" font:[NSFont systemFontOfSize:13 weight:NSFontWeightBold]];
+    NSTextField *commandsLabel = [self labelWithFrame:NSMakeRect(18, 58, 180, 20) text:[self localizedChinese:@"启动命令" english:@"Launch Command"] font:[NSFont systemFontOfSize:13 weight:NSFontWeightBold]];
     commandsLabel.textColor = [NSColor colorWithSRGBRed:0.17 green:0.21 blue:0.27 alpha:1.0];
-    NSTextField *commandsHint = [self labelWithFrame:NSMakeRect(100, 58, 320, 18) text:@"固定命令在下拉里，自定义命令直接输入。" font:[NSFont systemFontOfSize:12]];
+    NSTextField *commandsHint = [self labelWithFrame:NSMakeRect(100, 58, 360, 18) text:[self localizedChinese:@"固定命令在下拉里，自定义命令直接输入。" english:@"Pick a preset command or type your own."] font:[NSFont systemFontOfSize:12]];
     commandsHint.textColor = NSColor.secondaryLabelColor;
 
     self.commandComboBox = [[NSComboBox alloc] initWithFrame:NSMakeRect(18, 18, 382, 34)];
@@ -443,10 +453,10 @@
     self.commandComboBox.usesDataSource = NO;
     self.commandComboBox.completes = YES;
     self.commandComboBox.numberOfVisibleItems = 8;
-    self.commandComboBox.placeholderString = @"选择或输入启动命令";
+    self.commandComboBox.placeholderString = [self localizedChinese:@"选择或输入启动命令" english:@"Choose or type a launch command"];
     [self styleInputControl:self.commandComboBox];
 
-    self.launchButton = [self buttonWithFrame:NSMakeRect(412, 18, 112, 34) title:@"启动" action:@selector(launchSelectedCommand:)];
+    self.launchButton = [self buttonWithFrame:NSMakeRect(412, 18, 112, 34) title:[self localizedChinese:@"启动" english:@"Launch"] action:@selector(launchSelectedCommand:)];
     [self stylePrimaryButton:self.launchButton];
 
     NSView *statusCard = [self cardViewWithFrame:NSMakeRect(24, 28, 542, 36)
@@ -492,7 +502,7 @@
     NSArray<NSString *> *projects = [self allProjects];
 
     if (projects.count == 0) {
-        [self.projectPopup addItemWithTitle:@"还没有保存过项目目录"];
+        [self.projectPopup addItemWithTitle:[self localizedChinese:@"还没有保存过项目目录" english:@"No saved project folders yet"]];
         self.projectPopup.lastItem.enabled = NO;
         self.selectedProject = nil;
         [self updateControls];
@@ -528,11 +538,11 @@
 
     if (hasProject) {
         BOOL isPinned = [self.pinnedProjects containsObject:self.selectedProject];
-        self.pinButton.title = isPinned ? @"取消收藏当前项目" : @"收藏当前项目";
+        self.pinButton.title = isPinned ? [self localizedChinese:@"取消收藏当前项目" english:@"Unpin Current Project"] : [self localizedChinese:@"收藏当前项目" english:@"Pin Current Project"];
         self.statusLabel.stringValue = self.selectedProject;
     } else {
-        self.pinButton.title = @"收藏当前项目";
-        self.statusLabel.stringValue = @"先选一个项目目录。你也可以直接点“选择文件夹...”。";
+        self.pinButton.title = [self localizedChinese:@"收藏当前项目" english:@"Pin Current Project"];
+        self.statusLabel.stringValue = [self localizedChinese:@"先选一个项目目录。你也可以直接点“选择文件夹...”。" english:@"Select a project folder first, or click \"Choose Folder...\"."];
     }
 }
 
@@ -573,7 +583,7 @@
 
 - (void)removeSelectedProject:(id)sender {
     if (self.selectedProject.length == 0) {
-        self.statusLabel.stringValue = @"先选一个项目目录。";
+        self.statusLabel.stringValue = [self localizedChinese:@"先选一个项目目录。" english:@"Select a project folder first."];
         return;
     }
 
@@ -582,14 +592,14 @@
     BOOL removesRootFolder = (rootPath != nil);
 
     NSAlert *alert = [[NSAlert alloc] init];
-    alert.messageText = @"确认移除";
+    alert.messageText = [self localizedChinese:@"确认移除" english:@"Confirm Removal"];
     if (removesRootFolder) {
-        alert.informativeText = [NSString stringWithFormat:@"当前目录来自父目录“%@”的子文件夹列表。移除后，这个父目录下面的所有子文件夹都会从列表里消失。", [self displayNameForPath:rootPath]];
+        alert.informativeText = [NSString stringWithFormat:[self localizedChinese:@"当前目录来自父目录“%@”的子文件夹列表。移除后，这个父目录下面的所有子文件夹都会从列表里消失。" english:@"This project comes from the subfolder list of parent folder \"%@\". Removing it will remove all listed subfolders from that parent folder."], [self displayNameForPath:rootPath]];
     } else {
-        alert.informativeText = [NSString stringWithFormat:@"移除“%@”后，它会从最近使用和收藏列表里删除。", [self displayNameForPath:projectToRemove]];
+        alert.informativeText = [NSString stringWithFormat:[self localizedChinese:@"移除“%@”后，它会从最近使用和收藏列表里删除。" english:@"Removing \"%@\" will delete it from the recent and pinned lists."], [self displayNameForPath:projectToRemove]];
     }
-    [alert addButtonWithTitle:@"移除"];
-    [alert addButtonWithTitle:@"取消"];
+    [alert addButtonWithTitle:[self localizedChinese:@"移除" english:@"Remove"]];
+    [alert addButtonWithTitle:[self localizedChinese:@"取消" english:@"Cancel"]];
 
     if ([alert runModal] != NSAlertFirstButtonReturn) {
         return;
@@ -608,9 +618,9 @@
     [self refreshProjectMenuPreferSelection:nextSelection];
 
     if (removesRootFolder) {
-        self.statusLabel.stringValue = [NSString stringWithFormat:@"已移除父目录 %@ 及其子文件夹列表。", [self displayNameForPath:rootPath]];
+        self.statusLabel.stringValue = [NSString stringWithFormat:[self localizedChinese:@"已移除父目录 %@ 及其子文件夹列表。" english:@"Removed parent folder %@ and its subfolder list."], [self displayNameForPath:rootPath]];
     } else {
-        self.statusLabel.stringValue = [NSString stringWithFormat:@"已移除 %@。", [self displayNameForPath:projectToRemove]];
+        self.statusLabel.stringValue = [NSString stringWithFormat:[self localizedChinese:@"已移除 %@。" english:@"Removed %@."], [self displayNameForPath:projectToRemove]];
     }
 }
 
@@ -626,7 +636,7 @@
 
 - (void)launchSelectedCommand:(id)sender {
     if (self.selectedProject.length == 0) {
-        self.statusLabel.stringValue = @"先选一个项目目录。";
+        self.statusLabel.stringValue = [self localizedChinese:@"先选一个项目目录。" english:@"Select a project folder first."];
         return;
     }
 
@@ -655,18 +665,22 @@
         [task launch];
         [task waitUntilExit];
     } @catch (NSException *exception) {
-        self.statusLabel.stringValue = [NSString stringWithFormat:@"启动失败：%@", exception.reason ?: @"未知错误"];
+        self.statusLabel.stringValue = [NSString stringWithFormat:[self localizedChinese:@"启动失败：%@" english:@"Launch failed: %@"], exception.reason ?: [self localizedChinese:@"未知错误" english:@"Unknown error"]];
         return;
     }
 
     if (task.terminationStatus != 0) {
-        self.statusLabel.stringValue = [NSString stringWithFormat:@"Terminal 启动失败，退出码 %d。", task.terminationStatus];
+        self.statusLabel.stringValue = [NSString stringWithFormat:[self localizedChinese:@"Terminal 启动失败，退出码 %d。" english:@"Terminal launch failed with exit code %d."], task.terminationStatus];
         return;
     }
 
     [self addRecentProject:self.selectedProject];
     [self refreshProjectMenuPreferSelection:self.selectedProject];
-    self.statusLabel.stringValue = [NSString stringWithFormat:@"已在 %@ 中启动 `%@`。", [self displayNameForPath:self.selectedProject], command];
+    if ([self prefersEnglish]) {
+        self.statusLabel.stringValue = [NSString stringWithFormat:@"Started `%@` in %@.", command, [self displayNameForPath:self.selectedProject]];
+    } else {
+        self.statusLabel.stringValue = [NSString stringWithFormat:@"已在 %@ 中启动 `%@`。", [self displayNameForPath:self.selectedProject], command];
+    }
 }
 
 - (void)chooseFolder:(id)sender {
@@ -675,17 +689,17 @@
     panel.canChooseFiles = NO;
     panel.allowsMultipleSelection = NO;
     panel.canCreateDirectories = NO;
-    panel.prompt = @"选择项目目录";
-    panel.message = @"选一个目录。你可以只添加当前目录，也可以把它下面的子文件夹一起列出来。";
+    panel.prompt = [self localizedChinese:@"选择项目目录" english:@"Choose Project Folder"];
+    panel.message = [self localizedChinese:@"选一个目录。你可以只添加当前目录，也可以把它下面的子文件夹一起列出来。" english:@"Choose a folder. You can add just this folder or list all of its subfolders."];
 
     if ([panel runModal] == NSModalResponseOK && panel.URL != nil) {
         NSString *selectedPath = panel.URL.path;
         NSAlert *alert = [[NSAlert alloc] init];
-        alert.messageText = @"导入方式";
-        alert.informativeText = @"要只添加当前文件夹，还是把这个文件夹下面的子文件夹都列出来？";
-        [alert addButtonWithTitle:@"列出所有子文件夹"];
-        [alert addButtonWithTitle:@"只添加当前文件夹"];
-        [alert addButtonWithTitle:@"取消"];
+        alert.messageText = [self localizedChinese:@"导入方式" english:@"Import Mode"];
+        alert.informativeText = [self localizedChinese:@"要只添加当前文件夹，还是把这个文件夹下面的子文件夹都列出来？" english:@"Add only this folder, or list all subfolders under it?"];
+        [alert addButtonWithTitle:[self localizedChinese:@"列出所有子文件夹" english:@"List All Subfolders"]];
+        [alert addButtonWithTitle:[self localizedChinese:@"只添加当前文件夹" english:@"Add This Folder Only"]];
+        [alert addButtonWithTitle:[self localizedChinese:@"取消" english:@"Cancel"]];
 
         NSModalResponse response = [alert runModal];
         if (response == NSAlertThirdButtonReturn) {
@@ -698,12 +712,16 @@
             if (subdirectories.count > 0) {
                 self.selectedProject = subdirectories.firstObject;
                 [self refreshProjectMenuPreferSelection:self.selectedProject];
-                self.statusLabel.stringValue = [NSString stringWithFormat:@"已从 %@ 列出 %lu 个子文件夹。", [self displayNameForPath:selectedPath], (unsigned long)subdirectories.count];
+                if ([self prefersEnglish]) {
+                    self.statusLabel.stringValue = [NSString stringWithFormat:@"Listed %lu subfolders from %@.", (unsigned long)subdirectories.count, [self displayNameForPath:selectedPath]];
+                } else {
+                    self.statusLabel.stringValue = [NSString stringWithFormat:@"已从 %@ 列出 %lu 个子文件夹。", [self displayNameForPath:selectedPath], (unsigned long)subdirectories.count];
+                }
             } else {
                 self.selectedProject = selectedPath;
                 [self addRecentProject:selectedPath];
                 [self refreshProjectMenuPreferSelection:self.selectedProject];
-                self.statusLabel.stringValue = @"这个目录下面没有可用的子文件夹，已改为添加当前目录。";
+                self.statusLabel.stringValue = [self localizedChinese:@"这个目录下面没有可用的子文件夹，已改为添加当前目录。" english:@"No usable subfolders were found, so the current folder was added instead."];
             }
             return;
         }
@@ -728,11 +746,11 @@
 
     if ([self.pinnedProjects containsObject:self.selectedProject]) {
         [self.pinnedProjects removeObject:self.selectedProject];
-        self.statusLabel.stringValue = [NSString stringWithFormat:@"已取消收藏 %@。", [self displayNameForPath:self.selectedProject]];
+        self.statusLabel.stringValue = [NSString stringWithFormat:[self localizedChinese:@"已取消收藏 %@。" english:@"Unpinned %@."], [self displayNameForPath:self.selectedProject]];
     } else {
         [self.pinnedProjects removeObject:self.selectedProject];
         [self.pinnedProjects insertObject:self.selectedProject atIndex:0];
-        self.statusLabel.stringValue = [NSString stringWithFormat:@"已收藏 %@。", [self displayNameForPath:self.selectedProject]];
+        self.statusLabel.stringValue = [NSString stringWithFormat:[self localizedChinese:@"已收藏 %@。" english:@"Pinned %@."], [self displayNameForPath:self.selectedProject]];
     }
 
     [self saveConfig];
