@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.2
+
+### Added
+
+- 应用内 `Preferences...` 语言设置窗口
+- 可手动切换 `中文` 和 `English`
+- 可恢复默认：跟随系统语言
+- GitHub README 改为中英双语
+
+### Updated
+
+- 最新 release 文案改为中英双语
+- 安装包和磁盘镜像更新为新的语言设置版本
+
 ## v0.1.1
 
 ### Added

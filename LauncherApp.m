@@ -2,7 +2,9 @@
 
 @interface LauncherAppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property (nonatomic, strong) NSWindow *window;
+@property (nonatomic, strong) NSWindow *preferencesWindow;
 @property (nonatomic, strong) NSPopUpButton *projectPopup;
+@property (nonatomic, strong) NSPopUpButton *languagePopup;
 @property (nonatomic, strong) NSComboBox *commandComboBox;
 @property (nonatomic, strong) NSTextField *statusLabel;
 @property (nonatomic, strong) NSButton *pinButton;
@@ -14,6 +16,7 @@
 @property (nonatomic, strong) NSMutableArray<NSString *> *pinnedProjects;
 @property (nonatomic, strong) NSMutableArray<NSString *> *customCommands;
 @property (nonatomic, copy) NSString *lastCommand;
+@property (nonatomic, copy) NSString *languagePreference;
 @property (nonatomic, copy) NSString *selectedProject;
 @end
 
@@ -67,6 +70,7 @@
     self.pinnedProjects = [NSMutableArray array];
     self.customCommands = [NSMutableArray array];
     self.lastCommand = @"codex";
+    self.languagePreference = @"auto";
 
     NSData *data = [NSData dataWithContentsOfFile:[self configPath]];
     if (!data) {
@@ -84,6 +88,7 @@
     NSArray *pinned = [config[@"pinnedProjects"] isKindOfClass:[NSArray class]] ? config[@"pinnedProjects"] : @[];
     NSArray *customCommands = [config[@"customCommands"] isKindOfClass:[NSArray class]] ? config[@"customCommands"] : @[];
     NSString *lastCommand = [config[@"lastCommand"] isKindOfClass:[NSString class]] ? config[@"lastCommand"] : nil;
+    NSString *languagePreference = [config[@"languagePreference"] isKindOfClass:[NSString class]] ? config[@"languagePreference"] : nil;
     NSDictionary *legacyCommands = [config[@"commands"] isKindOfClass:[NSDictionary class]] ? config[@"commands"] : @{};
 
     [self.rootFolders addObjectsFromArray:[self dedupeExistingDirectories:roots]];
@@ -103,6 +108,10 @@
     } else if ([legacyCommands[@"codex"] isKindOfClass:[NSString class]]) {
         self.lastCommand = [self normalizedCommand:legacyCommands[@"codex"] fallback:@"codex"];
     }
+
+    if ([languagePreference isEqualToString:@"zh"] || [languagePreference isEqualToString:@"en"] || [languagePreference isEqualToString:@"auto"]) {
+        self.languagePreference = languagePreference;
+    }
 }
 
 - (void)saveConfig {
@@ -117,6 +126,7 @@
         @"pinnedProjects": [self dedupeExistingDirectories:self.pinnedProjects],
         @"customCommands": self.customCommands ?: @[],
         @"lastCommand": [self normalizedCommand:self.lastCommand fallback:@"codex"],
+        @"languagePreference": self.languagePreference ?: @"auto",
     };
 
     NSData *data = [NSJSONSerialization dataWithJSONObject:config options:NSJSONWritingPrettyPrinted error:nil];
@@ -139,12 +149,58 @@
 }
 
 - (BOOL)prefersEnglish {
+    if ([self.languagePreference isEqualToString:@"en"]) {
+        return YES;
+    }
+    if ([self.languagePreference isEqualToString:@"zh"]) {
+        return NO;
+    }
+
     NSString *language = [NSLocale preferredLanguages].firstObject.lowercaseString ?: @"";
     return [language hasPrefix:@"en"];
 }
 
 - (NSString *)localizedChinese:(NSString *)chinese english:(NSString *)english {
     return [self prefersEnglish] ? english : chinese;
+}
+
+- (void)rebuildWindowPreservingSelection:(NSString *)preferredSelection {
+    NSRect frame = self.window.frame;
+    BOOL wasVisible = self.window.isVisible;
+
+    self.window.delegate = nil;
+    [self.window orderOut:nil];
+    [self.window close];
+
+    [self buildMainMenu];
+    [self buildWindow];
+    [self.window setFrame:frame display:NO];
+    [self refreshProjectMenuPreferSelection:preferredSelection];
+
+    if (wasVisible) {
+        [self.window makeKeyAndOrderFront:nil];
+        [NSApp activateIgnoringOtherApps:YES];
+    }
+}
+
+- (void)rebuildWindowsAfterLanguageChange {
+    BOOL preferencesWasVisible = self.preferencesWindow.isVisible;
+    NSRect preferencesFrame = self.preferencesWindow.frame;
+
+    if (self.preferencesWindow != nil) {
+        self.preferencesWindow.delegate = nil;
+        [self.preferencesWindow orderOut:nil];
+        [self.preferencesWindow close];
+        self.preferencesWindow = nil;
+        self.languagePopup = nil;
+    }
+
+    [self rebuildWindowPreservingSelection:self.selectedProject];
+
+    if (preferencesWasVisible) {
+        [self openPreferences:nil];
+        [self.preferencesWindow setFrame:preferencesFrame display:YES];
+    }
 }
 
 - (void)buildMainMenu {
@@ -155,6 +211,13 @@
 
     NSMenu *appMenu = [[NSMenu alloc] init];
     NSString *appName = NSProcessInfo.processInfo.processName ?: @"AI Code Launcher";
+
+    NSMenuItem *preferencesItem = [[NSMenuItem alloc] initWithTitle:[self localizedChinese:@"设置..." english:@"Preferences..."]
+                                                             action:@selector(openPreferences:)
+                                                      keyEquivalent:@","];
+    preferencesItem.target = self;
+    [appMenu addItem:preferencesItem];
+    [appMenu addItem:[NSMenuItem separatorItem]];
 
     NSString *quitTitle = [self prefersEnglish] ? [NSString stringWithFormat:@"Quit %@", appName] : [NSString stringWithFormat:@"退出 %@", appName];
     NSMenuItem *quitItem = [[NSMenuItem alloc] initWithTitle:quitTitle
@@ -411,7 +474,7 @@
     NSTextField *subtitleLabel = [self labelWithFrame:NSMakeRect(18, 10, 360, 18) text:[self localizedChinese:@"找目录、切目录、选命令，直接开工。" english:@"Pick a project, choose a command, and start."] font:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]];
     subtitleLabel.textColor = [NSColor colorWithSRGBRed:0.79 green:0.84 blue:0.90 alpha:1.0];
 
-    NSTextField *heroHint = [self labelWithFrame:NSMakeRect(360, 28, 158, 40) text:[self localizedChinese:@"项目\n命令\n启动" english:@"Projects\nCommand\nLaunch"] font:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightSemibold]];
+    NSTextField *heroHint = [self labelWithFrame:NSMakeRect(382, 28, 136, 40) text:[self localizedChinese:@"项目\n命令\n启动" english:@"Projects\nCommand\nLaunch"] font:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightSemibold]];
     heroHint.textColor = [NSColor colorWithSRGBRed:0.98 green:0.72 blue:0.54 alpha:0.95];
     heroHint.alignment = NSTextAlignmentRight;
 
@@ -443,9 +506,9 @@
                                    backgroundColor:[self panelFillColor]
                                         borderColor:[self panelBorderColor]
                                        cornerRadius:22.0];
-    NSTextField *commandsLabel = [self labelWithFrame:NSMakeRect(18, 58, 180, 20) text:[self localizedChinese:@"启动命令" english:@"Launch Command"] font:[NSFont systemFontOfSize:13 weight:NSFontWeightBold]];
+    NSTextField *commandsLabel = [self labelWithFrame:NSMakeRect(18, 58, 126, 20) text:[self localizedChinese:@"启动命令" english:@"Launch Command"] font:[NSFont systemFontOfSize:13 weight:NSFontWeightBold]];
     commandsLabel.textColor = [NSColor colorWithSRGBRed:0.17 green:0.21 blue:0.27 alpha:1.0];
-    NSTextField *commandsHint = [self labelWithFrame:NSMakeRect(100, 58, 360, 18) text:[self localizedChinese:@"固定命令在下拉里，自定义命令直接输入。" english:@"Pick a preset command or type your own."] font:[NSFont systemFontOfSize:12]];
+    NSTextField *commandsHint = [self labelWithFrame:NSMakeRect(154, 58, 328, 18) text:[self localizedChinese:@"固定命令在下拉里，自定义命令直接输入。" english:@"Pick a preset command or type your own."] font:[NSFont systemFontOfSize:12]];
     commandsHint.textColor = NSColor.secondaryLabelColor;
 
     self.commandComboBox = [[NSComboBox alloc] initWithFrame:NSMakeRect(18, 18, 382, 34)];
@@ -757,6 +820,77 @@
     [self refreshProjectMenuPreferSelection:self.selectedProject];
 }
 
+- (void)openPreferences:(id)sender {
+    if (self.preferencesWindow != nil) {
+        [self.preferencesWindow makeKeyAndOrderFront:nil];
+        [NSApp activateIgnoringOtherApps:YES];
+        return;
+    }
+
+    self.preferencesWindow = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 360, 170)
+                                                         styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable)
+                                                           backing:NSBackingStoreBuffered
+                                                             defer:NO];
+    [self.preferencesWindow center];
+    self.preferencesWindow.title = [self localizedChinese:@"设置" english:@"Preferences"];
+    self.preferencesWindow.delegate = self;
+    self.preferencesWindow.releasedWhenClosed = NO;
+
+    NSView *contentView = self.preferencesWindow.contentView;
+
+    NSTextField *titleLabel = [self labelWithFrame:NSMakeRect(24, 118, 200, 24)
+                                              text:[self localizedChinese:@"语言设置" english:@"Language"]
+                                              font:[NSFont systemFontOfSize:18 weight:NSFontWeightBold]];
+    NSTextField *hintLabel = [self labelWithFrame:NSMakeRect(24, 94, 300, 18)
+                                             text:[self localizedChinese:@"默认跟随系统语言，也可以手动切换。" english:@"Follow macOS by default, or switch manually."]
+                                             font:[NSFont systemFontOfSize:12]];
+    hintLabel.textColor = NSColor.secondaryLabelColor;
+
+    NSTextField *pickerLabel = [self labelWithFrame:NSMakeRect(24, 56, 80, 20)
+                                               text:[self localizedChinese:@"界面语言" english:@"App Language"]
+                                               font:[NSFont systemFontOfSize:13 weight:NSFontWeightSemibold]];
+
+    self.languagePopup = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(112, 52, 118, 30) pullsDown:NO];
+    self.languagePopup.target = self;
+    self.languagePopup.action = @selector(languageSelectionChanged:);
+    self.languagePopup.font = [NSFont systemFontOfSize:12 weight:NSFontWeightSemibold];
+    [self.languagePopup addItemWithTitle:@"中文"];
+    self.languagePopup.lastItem.representedObject = @"zh";
+    [self.languagePopup addItemWithTitle:@"English"];
+    self.languagePopup.lastItem.representedObject = @"en";
+    [self styleInputControl:self.languagePopup];
+
+    NSInteger languageIndex = [self prefersEnglish] ? 1 : 0;
+    [self.languagePopup selectItemAtIndex:languageIndex];
+
+    NSButton *systemButton = [self buttonWithFrame:NSMakeRect(24, 18, 206, 30)
+                                             title:[self localizedChinese:@"恢复默认：跟随系统语言" english:@"Use System Language"]
+                                            action:@selector(useSystemLanguage:)];
+    [self styleSecondaryButton:systemButton];
+
+    [contentView addSubview:titleLabel];
+    [contentView addSubview:hintLabel];
+    [contentView addSubview:pickerLabel];
+    [contentView addSubview:self.languagePopup];
+    [contentView addSubview:systemButton];
+
+    [self.preferencesWindow makeKeyAndOrderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
+}
+
+- (void)useSystemLanguage:(id)sender {
+    self.languagePreference = @"auto";
+    [self saveConfig];
+    [self rebuildWindowsAfterLanguageChange];
+}
+
+- (void)languageSelectionChanged:(id)sender {
+    NSString *selectedLanguage = [self.languagePopup.selectedItem.representedObject isKindOfClass:[NSString class]] ? (NSString *)self.languagePopup.selectedItem.representedObject : @"auto";
+    self.languagePreference = selectedLanguage;
+    [self saveConfig];
+    [self rebuildWindowsAfterLanguageChange];
+}
+
 - (void)projectSelectionChanged:(id)sender {
     NSMenuItem *item = self.projectPopup.selectedItem;
     if ([item.representedObject isKindOfClass:[NSString class]]) {
@@ -771,6 +905,9 @@
     if (notification.object == self.window) {
         [self persistCurrentCommand];
         [NSApp terminate:nil];
+    } else if (notification.object == self.preferencesWindow) {
+        self.preferencesWindow = nil;
+        self.languagePopup = nil;
     }
 }
 
